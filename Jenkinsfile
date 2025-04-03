@@ -32,7 +32,7 @@ pipeline {
                     sh '''
                         unset GITHUB_TOKEN
                         echo "$GITHUB_TOKEN" | gh auth login --with-token
-                        gh pr create --title "Automated PR: Changes in CFG files" --body "This PR was automatically created due to changes detected in .cfg files." --base automation --head ${GIT_BRANCH}
+                        gh pr create --title "Automated PR: Changes in CFG files" --body "This PR was automatically created due to changes detected in .cfg files." --base main --head ${GIT_BRANCH}
                     '''
                 }
             }
