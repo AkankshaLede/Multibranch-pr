@@ -4,9 +4,8 @@ pipeline {
         // Generate a timestamp for tagging
         TIMESTAMP = "${new Date().format('yyyyMMdd-HHmm')}"
         TAG_NAME = "cfg-change-${TIMESTAMP}" // Define TAG_NAME in the environment
-        CFG_CHANGES_DETECTED = false // Initialize to false
     }
-    
+
     stages {
         stage('Check for CFG Changes') {
             steps {
