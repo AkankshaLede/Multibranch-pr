@@ -186,6 +186,7 @@ pipeline {
                 }
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
+                        unset GITHUB_TOKEN
                         git config --global user.email "jenkins@example.com"
                         git config --global user.name "Jenkins"
                         git tag "$TAG_NAME"
@@ -202,6 +203,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
+                        unset GITHUB_TOKEN
                         echo "$GITHUB_TOKEN" | gh auth login --with-token
                         gh release create "$TAG_NAME" \
                             --title "CFG Changes Release - $TAG_NAME" \
