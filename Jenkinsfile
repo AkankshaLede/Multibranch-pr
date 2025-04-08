@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // Generate a timestamp for tagging (e.g., cfg-change-20250407-1750)
+        // Generate a timestamp for tagging (e.g., cfg-change-20250408-1152)
         TIMESTAMP = "${new Date().format('yyyyMMdd-HHmm')}"
     }
 
@@ -35,6 +35,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
+                        unset GITHUB_TOKEN
                         gh auth login --with-token <<< "$GITHUB_TOKEN"
                         gh pr create --title "Automated PR: Changes in CFG files" \
                                      --body "This PR was automatically created due to changes detected in .cfg files." \
