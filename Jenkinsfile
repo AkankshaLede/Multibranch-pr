@@ -45,7 +45,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
-                        gh auth login --with-token <<< "$GITHUB_TOKEN"
+                        echo "$GITHUB_TOKEN" | gh auth login --with-token
                         gh release create "$TAG_NAME" \
                             --title "CFG Changes Release - $TAG_NAME" \
                             --notes "Automated release created due to .cfg changes."
