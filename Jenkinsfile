@@ -100,6 +100,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
+                        unset GITHUB_TOKEN
                         echo "$GITHUB_TOKEN" | gh auth login --with-token
                         gh pr create --title "Automated PR: Changes in CFG files" \
                                      --body "This PR was automatically created due to changes detected in .cfg files." \
@@ -116,6 +117,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-pat-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
+                        unset GITHUB_TOKEN
                         echo "$GITHUB_TOKEN" | gh auth login --with-token
                         gh release create "$TAG_NAME" \
                             --title "CFG Changes Release - $TAG_NAME" \
