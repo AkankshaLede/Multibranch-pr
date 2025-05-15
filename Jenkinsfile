@@ -104,7 +104,7 @@ pipeline {
                         gh pr create --title "Automated PR: Changes in CFG files" \
                                      --body "This PR was automatically created due to changes detected in .cfg files." \
                                      --base main --head ${GIT_BRANCH} || echo "PR might already exist. Skipping creation."
-                    '''
+                    '''|| true
                 }
             }
         }
@@ -120,7 +120,7 @@ pipeline {
                         gh release create "$TAG_NAME" \
                             --title "CFG Changes Release - $TAG_NAME" \
                             --notes "Automated release created due to .cfg changes." || echo "Release might already exist. Skipping creation."
-                    '''
+                    ''' || true
                 }
             }
         }
