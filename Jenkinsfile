@@ -354,6 +354,8 @@
 
 
 
+
+
 // Import UUID for generating unique temporary file names
 import java.util.UUID
 
@@ -377,20 +379,21 @@ pipeline {
                     sh 'git fetch origin main'
 
                     // Determine the base branch for comparison.
-                    // For a feature branch, compare against 'origin/main'.
-                    // For 'main' itself, git diff against HEAD~1 is usually sufficient, or can be skipped.
+                    // For a feature branch, compare against 'remotes/origin/main'.
+                    // For 'main' itself, git diff against GIT_COMMIT~1 is usually sufficient, or can be skipped.
                     // This command finds all files changed on the current branch relative to 'origin/main'.
-                    def baseBranch = "origin/main"
+                    def baseBranch = "remotes/origin/main" // Use fully qualified remote branch name
                     def diffCommand
                     if (env.BRANCH_NAME == "main") {
-                        // If on main branch, compare against the previous commit on main
-                        diffCommand = 'git diff --name-only HEAD~1'
-                        echo "Comparing changes on 'main' against HEAD~1."
+                        // If on main branch, compare against the previous commit on main.
+                        // Using GIT_COMMIT for robustness.
+                        diffCommand = "git diff --name-only ${GIT_COMMIT}~1 ${GIT_COMMIT}"
+                        echo "Comparing changes on 'main' against ${GIT_COMMIT}~1."
                     } else {
-                        // For feature branches, compare against the common ancestor with main
-                        // This shows files introduced or modified on the current branch since diverging from main.
-                        diffCommand = "git diff --name-only ${baseBranch}...HEAD"
-                        echo "Comparing changes on '${env.BRANCH_NAME}' against '${baseBranch}'."
+                        // For feature branches, compare against the common ancestor with main.
+                        // Using GIT_COMMIT for robustness.
+                        diffCommand = "git diff --name-only ${baseBranch}...${GIT_COMMIT}"
+                        echo "Comparing changes on '${env.BRANCH_NAME}' against '${baseBranch}' using '${GIT_COMMIT}'."
                     }
 
                     def changedFiles = sh(script: diffCommand, returnStdout: true).trim()
@@ -409,7 +412,7 @@ pipeline {
                             env.CFG_CHANGES_DETECTED = false // Set environment variable to false
                         }
                     } else {
-                        echo "No changes found in the last commit (or compared against base branch)."
+                        echo "No changes found relative to the base branch."
                         env.CFG_CHANGES_DETECTED = false // Set environment variable to false
                     }
                 }
