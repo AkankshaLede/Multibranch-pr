@@ -363,7 +363,7 @@ pipeline {
     agent any
 
     environment {
-        // Generate a timestamp for tagging purposes (e.g., '20230612-1430')
+        // Generate a timestamp for tagging purposes (e.g., 'yyyyMMdd-HHmm')
         TIMESTAMP = "${new Date().format('yyyyMMdd-HHmm')}"
         // Define the tag name using the generated timestamp
         TAG_NAME = "cfg-change-${TIMESTAMP}"
@@ -373,10 +373,24 @@ pipeline {
         stage('Check for CFG Changes') {
             steps {
                 script { // This script block is correctly placed for Groovy logic
-                    // First, ensure 'origin/main' branch is fetched and available locally for comparison.
-                    // This is crucial for 'git diff' to work correctly against remote branches.
-                    echo "Ensuring 'origin/main' is fetched for comparison."
-                    sh 'git fetch origin main'
+                    // Ensure 'origin/main' branch is fetched and its remote tracking reference
+                    // (refs/remotes/origin/main) is explicitly updated in the local repository.
+                    // This is crucial for 'git diff' and 'git merge-base' to work correctly.
+                    echo "Ensuring 'origin/main' is fetched and valid for comparison."
+                    sh 'git fetch origin main:refs/remotes/origin/main'
+
+                    def mainBranchRef = "refs/remotes/origin/main" // Explicit full reference name for origin/main
+
+                    def mainLatestCommit
+                    try {
+                        // Attempt to parse the exact commit hash of the remote main branch.
+                        // This step verifies that 'mainBranchRef' is a valid, resolvable Git object.
+                        mainLatestCommit = sh(script: "git rev-parse ${mainBranchRef}", returnStdout: true).trim()
+                        echo "Latest commit on ${mainBranchRef}: ${mainLatestCommit}"
+                    } catch (err) {
+                        // If 'git rev-parse' fails, it means the reference is not recognized by Git.
+                        error("Failed to resolve ${mainBranchRef} after fetch. Error: ${err}. Ensure 'main' branch exists on the remote and is accessible.")
+                    }
 
                     def diffCommand
                     def baseCommit
@@ -390,20 +404,23 @@ pipeline {
                     } else {
                         // For feature branches, find the common ancestor (merge base) with 'origin/main'.
                         // This is the point where your branch diverged from 'main'.
-                        echo "Finding common ancestor between '${env.BRANCH_NAME}' (${GIT_COMMIT}) and 'remotes/origin/main'."
+                        echo "Finding common ancestor between '${env.BRANCH_NAME}' (${GIT_COMMIT}) and '${mainBranchRef}' (${mainLatestCommit})."
                         try {
-                            baseCommit = sh(script: "git merge-base remotes/origin/main ${GIT_COMMIT}", returnStdout: true).trim()
+                            // Use the resolved commit hash for merge-base, ensuring valid object names are provided.
+                            baseCommit = sh(script: "git merge-base ${mainLatestCommit} ${GIT_COMMIT}", returnStdout: true).trim()
                             echo "Common ancestor found: ${baseCommit}"
                         } catch (err) {
-                            error("Failed to find common ancestor for git diff. Error: ${err}. Ensure 'remotes/origin/main' exists and history is available.")
+                            // If 'git merge-base' fails, it implies a disconnection in branch history.
+                            error("Failed to find common ancestor using merge-base. Error: ${err}. Ensure branch history is connected (e.g., your feature branch was indeed branched off main) and that 'main' has sufficient history.")
                         }
 
                         // Now, compare the common ancestor with the current commit on the feature branch.
                         // This shows all changes unique to the feature branch since it branched off main.
                         diffCommand = "git diff --name-only ${baseCommit} ${GIT_COMMIT}"
-                        echo "Comparing changes on '${env.BRANCH_NAME}' against its merge base with 'remotes/origin/main': ${diffCommand}"
+                        echo "Comparing changes on '${env.BRANCH_NAME}' against its merge base: ${diffCommand}"
                     }
 
+                    // Execute the constructed git diff command
                     def changedFiles = sh(script: diffCommand, returnStdout: true).trim()
 
                     // Print the detected changed files for debugging purposes
@@ -585,3 +602,4 @@ pipeline {
         }
     }
 }
+
