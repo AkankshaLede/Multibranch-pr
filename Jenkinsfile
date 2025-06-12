@@ -374,26 +374,34 @@ pipeline {
             steps {
                 script { // This script block is correctly placed for Groovy logic
                     // First, ensure 'origin/main' branch is fetched and available locally for comparison.
-                    // This is crucial for 'git diff origin/main...HEAD' to work correctly.
+                    // This is crucial for 'git diff' to work correctly against remote branches.
                     echo "Ensuring 'origin/main' is fetched for comparison."
                     sh 'git fetch origin main'
 
-                    // Determine the base branch for comparison.
-                    // For a feature branch, compare against 'remotes/origin/main'.
-                    // For 'main' itself, git diff against GIT_COMMIT~1 is usually sufficient, or can be skipped.
-                    // This command finds all files changed on the current branch relative to 'origin/main'.
-                    def baseBranch = "remotes/origin/main" // Use fully qualified remote branch name
                     def diffCommand
+                    def baseCommit
+
                     if (env.BRANCH_NAME == "main") {
-                        // If on main branch, compare against the previous commit on main.
-                        // Using GIT_COMMIT for robustness.
-                        diffCommand = "git diff --name-only ${GIT_COMMIT}~1 ${GIT_COMMIT}"
-                        echo "Comparing changes on 'main' against ${GIT_COMMIT}~1."
+                        // If on the 'main' branch, compare against the previous commit on main.
+                        // This effectively checks changes introduced by the current commit.
+                        baseCommit = "${GIT_COMMIT}~1"
+                        echo "Comparing changes on 'main' against previous commit: ${baseCommit}."
+                        diffCommand = "git diff --name-only ${baseCommit} ${GIT_COMMIT}"
                     } else {
-                        // For feature branches, compare against the common ancestor with main.
-                        // Using GIT_COMMIT for robustness.
-                        diffCommand = "git diff --name-only ${baseBranch}...${GIT_COMMIT}"
-                        echo "Comparing changes on '${env.BRANCH_NAME}' against '${baseBranch}' using '${GIT_COMMIT}'."
+                        // For feature branches, find the common ancestor (merge base) with 'origin/main'.
+                        // This is the point where your branch diverged from 'main'.
+                        echo "Finding common ancestor between '${env.BRANCH_NAME}' (${GIT_COMMIT}) and 'remotes/origin/main'."
+                        try {
+                            baseCommit = sh(script: "git merge-base remotes/origin/main ${GIT_COMMIT}", returnStdout: true).trim()
+                            echo "Common ancestor found: ${baseCommit}"
+                        } catch (err) {
+                            error("Failed to find common ancestor for git diff. Error: ${err}. Ensure 'remotes/origin/main' exists and history is available.")
+                        }
+
+                        // Now, compare the common ancestor with the current commit on the feature branch.
+                        // This shows all changes unique to the feature branch since it branched off main.
+                        diffCommand = "git diff --name-only ${baseCommit} ${GIT_COMMIT}"
+                        echo "Comparing changes on '${env.BRANCH_NAME}' against its merge base with 'remotes/origin/main': ${diffCommand}"
                     }
 
                     def changedFiles = sh(script: diffCommand, returnStdout: true).trim()
