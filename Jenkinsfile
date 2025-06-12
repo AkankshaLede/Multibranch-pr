@@ -132,8 +132,10 @@
 
 
 
+// -----------------------------------------------------------------------------------------------------------
 
-// ----------------------------------------------------
+
+
 // // Import UUID for generating unique temporary file names
 // import java.util.UUID
 
@@ -151,8 +153,27 @@
 //         stage('Check for CFG Changes') {
 //             steps {
 //                 script { // This script block is correctly placed for Groovy logic
-//                     // Get a list of files changed in the last commit (compared to HEAD~1)
-//                     def changedFiles = sh(script: 'git diff --name-only HEAD~1', returnStdout: true).trim()
+//                     // Determine the base branch for comparison.
+//                     // For a feature branch, compare against 'origin/main'.
+//                     // For 'main' itself, git diff against HEAD~1 is usually sufficient, or can be skipped.
+//                     // This command finds all files changed on the current branch relative to 'origin/main'.
+//                     def baseBranch = "origin/main"
+//                     def diffCommand
+//                     if (env.BRANCH_NAME == "main") {
+//                         // If on main branch, compare against the previous commit on main
+//                         diffCommand = 'git diff --name-only HEAD~1'
+//                         echo "Comparing changes on 'main' against HEAD~1."
+//                     } else {
+//                         // For feature branches, compare against the common ancestor with main
+//                         // This shows files introduced or modified on the current branch since diverging from main.
+//                         diffCommand = "git diff --name-only ${baseBranch}...HEAD"
+//                         echo "Comparing changes on '${env.BRANCH_NAME}' against '${baseBranch}'."
+//                     }
+
+//                     def changedFiles = sh(script: diffCommand, returnStdout: true).trim()
+
+//                     // Print the detected changed files for debugging purposes
+//                     echo "Detected changed files:\n${changedFiles ?: 'No files changed.'}"
 
 //                     if (changedFiles) {
 //                         // Split the string of changed files into a list and check if any end with '.cfg'
@@ -165,7 +186,7 @@
 //                             env.CFG_CHANGES_DETECTED = false // Set environment variable to false
 //                         }
 //                     } else {
-//                         echo "No changes found in the last commit."
+//                         echo "No changes found in the last commit (or compared against base branch)."
 //                         env.CFG_CHANGES_DETECTED = false // Set environment variable to false
 //                     }
 //                 }
@@ -333,7 +354,6 @@
 
 
 
-
 // Import UUID for generating unique temporary file names
 import java.util.UUID
 
@@ -351,6 +371,11 @@ pipeline {
         stage('Check for CFG Changes') {
             steps {
                 script { // This script block is correctly placed for Groovy logic
+                    // First, ensure 'origin/main' branch is fetched and available locally for comparison.
+                    // This is crucial for 'git diff origin/main...HEAD' to work correctly.
+                    echo "Ensuring 'origin/main' is fetched for comparison."
+                    sh 'git fetch origin main'
+
                     // Determine the base branch for comparison.
                     // For a feature branch, compare against 'origin/main'.
                     // For 'main' itself, git diff against HEAD~1 is usually sufficient, or can be skipped.
